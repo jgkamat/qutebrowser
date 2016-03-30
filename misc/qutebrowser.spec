@@ -52,17 +52,24 @@ pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
 exe = EXE(pyz,
           a.scripts,
-          exclude_binaries=True,
+          a.binaries,
+          a.zipfiles,
+          a.datas,
           name='qutebrowser',
           icon=icon,
           debug=False,
           strip=False,
           upx=True,
           console=False )
-coll = COLLECT(exe,
-               a.binaries,
-               a.zipfiles,
-               a.datas,
-               strip=False,
-               upx=True,
-               name='qutebrowser')
+#coll = COLLECT(exe,
+#               a.binaries,
+#               a.zipfiles,
+#               a.datas,
+#               strip=False,
+#               upx=True,
+#               name='qutebrowser')
+
+app = BUNDLE(exe,
+             name='qutebrowser.app',
+             icon=icon,
+             bundle_identifier=None)

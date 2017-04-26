@@ -247,7 +247,16 @@ class WebEngineCaret(browsertab.AbstractCaret):
         return self._widget.selectedText()
 
     def follow_selected(self, *, tab=False):
-        log.stub()
+        # TODO handle tab == True
+
+        # Clear search if needed, selecting found element
+        if self.selection() == "":
+            self._tab.search.clear()
+
+        # Click on link via javascript
+        self._tab.run_js_async(
+            'if (window.getSelection().anchorNode != null) '
+            + ' window.getSelection().anchorNode.parentNode.click()')
 
 
 class WebEngineScroller(browsertab.AbstractScroller):

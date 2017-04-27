@@ -246,26 +246,30 @@ class WebEngineCaret(browsertab.AbstractCaret):
             raise browsertab.UnsupportedOperationError
         return self._widget.selectedText()
 
+    def _follow_selected_cb(self, js_elem, tab=False):
+        """Callback for javascript which clicks the selected element.
+
+        Used for follow_selected below"""
+        if js_elem is None:
+            return
+        elem = webengineelem.WebEngineElement(js_elem, tab=self._tab)
+        if tab:
+            click_type = usertypes.ClickTarget.tab
+        else:
+            click_type = usertypes.ClickTarget.normal
+
+        # Check to see if we have a real link, to follow before clicking
+        if elem.is_link():
+            elem.click(click_type)
+
     def follow_selected(self, *, tab=False):
-        def _follow_selected_cb(js_elem):
-            if js_elem is not None:
-                elem = webengineelem.WebEngineElement(js_elem, tab=self._tab)
-                if tab:
-                    click_type = usertypes.ClickTarget.tab
-                else:
-                    click_type = usertypes.ClickTarget.normal
-
-                # Check to see if we have a real link, to follow before clicking
-                href_tags = ['a', 'area', 'link']
-                if elem.tag_name() in href_tags:
-                    elem.click(click_type)
-
-        # Clear search if needed, selecting found element
-        if self.selection() == "":
+        # Clear search, which selects the found element as a side effect
+        if not self.has_selection():
             self._tab.search.clear()
 
         js_code = javascript.assemble('webelem', 'find_selected_link')
-        self._tab.run_js_async(js_code, _follow_selected_cb)
+        self._tab.run_js_async(js_code, lambda jsret:
+                               self._follow_selected_cb(jsret, tab))
 
 
 class WebEngineScroller(browsertab.AbstractScroller):

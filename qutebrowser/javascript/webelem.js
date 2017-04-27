@@ -156,7 +156,7 @@ window._qutebrowser.webelem = (function() {
             return null;
         }
         return serialize_elem(elem.parentNode);
-    }
+    };
 
     funcs.set_value = function(id, value) {
         elements[id].value = value;

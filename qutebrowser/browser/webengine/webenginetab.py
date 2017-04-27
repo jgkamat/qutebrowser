@@ -247,16 +247,25 @@ class WebEngineCaret(browsertab.AbstractCaret):
         return self._widget.selectedText()
 
     def follow_selected(self, *, tab=False):
-        # TODO handle tab == True
+        def _follow_selected_cb(js_elem):
+            if js_elem is not None:
+                elem = webengineelem.WebEngineElement(js_elem, tab=self._tab)
+                if tab:
+                    click_type = usertypes.ClickTarget.tab
+                else:
+                    click_type = usertypes.ClickTarget.normal
+
+                # Check to see if we have a real link, to follow before clicking
+                href_tags = ['a', 'area', 'link']
+                if elem.tag_name() in href_tags:
+                    elem.click(click_type)
 
         # Clear search if needed, selecting found element
         if self.selection() == "":
             self._tab.search.clear()
 
-        # Click on link via javascript
-        self._tab.run_js_async(
-            'if (window.getSelection().anchorNode != null) '
-            + ' window.getSelection().anchorNode.parentNode.click()')
+        js_code = javascript.assemble('webelem', 'find_selected_link')
+        self._tab.run_js_async(js_code, _follow_selected_cb)
 
 
 class WebEngineScroller(browsertab.AbstractScroller):

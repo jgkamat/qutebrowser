@@ -150,6 +150,14 @@ window._qutebrowser.webelem = (function() {
         return serialize_elem(elem);
     };
 
+    funcs.find_selected_link = function() {
+        var elem = window.getSelection().anchorNode;
+        if (!elem) {
+            return null;
+        }
+        return serialize_elem(elem.parentNode);
+    }
+
     funcs.set_value = function(id, value) {
         elements[id].value = value;
     };

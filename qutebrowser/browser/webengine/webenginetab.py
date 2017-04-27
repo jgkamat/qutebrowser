@@ -252,6 +252,7 @@ class WebEngineCaret(browsertab.AbstractCaret):
         Used for follow_selected below"""
         if js_elem is None:
             return
+        assert isinstance(js_elem, dict), js_elem
         elem = webengineelem.WebEngineElement(js_elem, tab=self._tab)
         if tab:
             click_type = usertypes.ClickTarget.tab

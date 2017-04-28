@@ -192,6 +192,7 @@ Feature: Searching on a page
     # TODO: wrapping message with scrolling
     # TODO: wrapping message without scrolling
 
+
     ## follow searched links
     Scenario: Follow a searched link
         When I run :search follow

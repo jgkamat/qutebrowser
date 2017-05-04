@@ -180,9 +180,9 @@ class WebEngineCaret(browsertab.AbstractCaret):
     """QtWebEngine implementations related to moving the cursor/selection."""
 
     # Number of times to check to see if a selection has appeared.
-    SELECTION_REPEAT_LIMIT = 10
+    SELECTION_REPEAT_LIMIT = 15
     # Number of ms to wait between checks to see if a selection has appeared.
-    SELECTION_REPEAT_TIME = 100
+    SELECTION_REPEAT_TIME = 1000
 
     @pyqtSlot(usertypes.KeyMode)
     def _on_mode_entered(self, mode):
@@ -254,17 +254,19 @@ class WebEngineCaret(browsertab.AbstractCaret):
     def _follow_selected_cb(self, js_elem, tab=False, repeat_limit=0):
         """Callback for javascript which clicks the selected element.
 
-        Used for follow_selected below
-
         Args:
             js_elems: The elements serialized from javascript.
             tab: Open in a new tab or not.
-            repeat_limit: The number of times we have to retry this function."""
+            repeat_limit: The number of times we have to retry this function
+        """
         if js_elem is None:
             # Try to repeat this request
             # TODO when on Qt5.9, don't repeat at all, and use selectionChanged
             # https://bugreports.qt.io/browse/QTBUG-53134
             if repeat_limit:
+                log.webview.debug(
+                    "Failed finding selection, remaining number:" +
+                    str(repeat_limit))
                 QTimer.singleShot(
                     WebEngineCaret.SELECTION_REPEAT_TIME,
                     lambda: self._run_find_selected(tab, repeat_limit - 1))
@@ -278,10 +280,12 @@ class WebEngineCaret(browsertab.AbstractCaret):
 
         # Check to see if we have a real link, to follow before clicking
         if elem.is_link():
+            log.webview.debug("Found link, clicking. Tab: " + str(click_type) +
+                              "Link: " + str(elem))
             elem.click(click_type)
 
     def _run_find_selected(self, tab, repeat_limit):
-        """Run JS code to find the currently selected link and call _follow_selected_cb."""
+        """Run JS code to find the currently selected link."""
         js_code = javascript.assemble('webelem', 'find_selected_link')
         self._tab.run_js_async(js_code, lambda jsret:
                                self._follow_selected_cb(jsret, tab,
@@ -290,9 +294,11 @@ class WebEngineCaret(browsertab.AbstractCaret):
     def follow_selected(self, *, tab=False):
         # Clear search, which selects the found element as a side effect
         if not self.has_selection():
+            log.webview.debug("Clearing search selection if one exists")
             self._tab.search.clear()
             repeat_limit = WebEngineCaret.SELECTION_REPEAT_LIMIT
         else:
+            log.webview.debug("Found existing selection to click")
             repeat_limit = 0
         self._run_find_selected(tab, repeat_limit)
 

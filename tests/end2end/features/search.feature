@@ -197,6 +197,7 @@ Feature: Searching on a page
     Scenario: Follow a searched link
         When I run :search follow
         And I wait for "search found follow" in the log
+        And I wait 1s
         And I run :follow-selected
         Then data/hello.txt should be loaded
 
@@ -204,6 +205,7 @@ Feature: Searching on a page
         When I run :window-only
         And I run :search follow
         And I wait for "search found follow" in the log
+        And I wait 1s
         And I run :follow-selected -t
         And I wait until data/hello.txt is loaded
         Then the following tabs should be open:
@@ -214,6 +216,7 @@ Feature: Searching on a page
         When I run :window-only
         And I run :search foo
         And I wait for "search found foo" in the log
+        And I wait 1s
         And I run :follow-selected
         Then the following tabs should be open:
             - data/search.html (active)
@@ -222,6 +225,7 @@ Feature: Searching on a page
         When I run :window-only
         And I run :search foo
         And I wait for "search found foo" in the log
+        And I wait 1s
         And I run :follow-selected -t
         Then the following tabs should be open:
             - data/search.html (active)

@@ -127,9 +127,12 @@ class WebEngineSearch(browsertab.AbstractSearch):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._flags = QWebEnginePage.FindFlags(0)
+        self._searching = False
 
     def _find(self, text, flags, callback, caller):
         """Call findText on the widget."""
+        self._searching = True
+
         def wrapped_callback(found):
             """Wrap the callback to do debug logging."""
             found_text = 'found' if found else "didn't find"
@@ -160,7 +163,11 @@ class WebEngineSearch(browsertab.AbstractSearch):
         self._find(text, flags, result_cb, 'search')
 
     def clear(self):
+        self._searching = False
         self._widget.findText('')
+
+    def searching(self):
+        return self._searching
 
     def prev_result(self, *, result_cb=None):
         # The int() here makes sure we get a copy of the flags.
@@ -293,12 +300,12 @@ class WebEngineCaret(browsertab.AbstractCaret):
 
     def follow_selected(self, *, tab=False):
         # Clear search, which selects the found element as a side effect
-        if not self.has_selection():
-            log.webview.debug("Clearing search selection if one exists")
+        if self._tab.search.searching():
+            log.webview.debug("Clearing search to select text")
             self._tab.search.clear()
             repeat_limit = WebEngineCaret.SELECTION_REPEAT_LIMIT
         else:
-            log.webview.debug("Found existing selection to click")
+            log.webview.debug("Attempting to click existing selection")
             repeat_limit = 0
         self._run_find_selected(tab, repeat_limit)
 

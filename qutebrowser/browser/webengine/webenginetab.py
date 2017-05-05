@@ -33,6 +33,7 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWebEngineWidgets import (QWebEnginePage, QWebEngineScript,
                                       QWebEngineProfile)
 # pylint: enable=no-name-in-module,import-error,useless-suppression
+from PyQt5.Qt import *
 
 from qutebrowser.browser import browsertab, mouse, shared
 from qutebrowser.browser.webengine import (webview, webengineelem, tabhistory,
@@ -567,21 +568,52 @@ class WebEngineTab(browsertab.AbstractTab):
         self._saved_zoom = None
 
     def _init_js(self):
+        # include qwebchannel js
+        page = self._widget.page()
+        qwebchannel_js = QFile(':/qtwebchannel/qwebchannel.js')
+        if not qwebchannel_js.open(QIODevice.ReadOnly):
+            raise SystemExit(
+                'Failed to load qwebchannel.js with error: %s' %
+                qwebchannel_js.errorString())
+        qwebchannel_js = bytes(qwebchannel_js.readAll()).decode('utf-8')
+
+        script = QWebEngineScript()
+        script.setSourceCode(qwebchannel_js + '''
+            new QWebChannel(qt.webChannelTransport, function(channel) {
+document.addEventListener("selectionchange", function() {
+        channel.objects.bridge.print('Hello world!');
+});
+
+            });
+        ''')
+        # script.setName('xxx')
+        script.setWorldId(QWebEngineScript.MainWorld)
+        script.setInjectionPoint(QWebEngineScript.DocumentReady)
+        script.setRunsOnSubFrames(True)
+        page.profile().scripts().insert(script)
+
         js_code = '\n'.join([
             '"use strict";',
             'window._qutebrowser = {};',
             utils.read_file('javascript/scroll.js'),
             utils.read_file('javascript/webelem.js'),
+            # ''' new QWebChannel(qt.webChannelTransport, function(channel) {
+            # channel.objects.bridge.print('Hello world!');
+            # });
+            # '''
         ])
         script = QWebEngineScript()
-        script.setInjectionPoint(QWebEngineScript.DocumentCreation)
+        script.setInjectionPoint(QWebEngineScript.DocumentReady)
         script.setSourceCode(js_code)
 
-        page = self._widget.page()
         script.setWorldId(QWebEngineScript.ApplicationWorld)
+        # script.setName('xxx')
+        # script.setWorldId(QWebEngineScript.MainWorld)
+        # script.setInjectionPoint(QWebEngineScript.DocumentReady)
+        script.setRunsOnSubFrames(True)
 
         # FIXME:qtwebengine  what about runsOnSubFrames?
-        page.scripts().insert(script)
+        page.profile().scripts().insert(script)
 
     def _install_event_filter(self):
         self._widget.focusProxy().installEventFilter(self._mouse_event_filter)

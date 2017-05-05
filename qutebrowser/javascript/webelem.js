@@ -36,6 +36,7 @@
 
 "use strict";
 
+
 window._qutebrowser.webelem = (function() {
     var funcs = {};
     var elements = [];

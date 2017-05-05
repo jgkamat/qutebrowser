@@ -26,6 +26,7 @@ from PyQt5.QtGui import QPalette
 # pylint: disable=no-name-in-module,import-error,useless-suppression
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 # pylint: enable=no-name-in-module,import-error,useless-suppression
+from PyQt5.Qt import QWebChannel
 
 from qutebrowser.browser import shared
 from qutebrowser.browser.webengine import certificateerror
@@ -46,6 +47,11 @@ class WebEngineView(QWebEngineView):
         theme_color = self.style().standardPalette().color(QPalette.Base)
         page = WebEnginePage(theme_color=theme_color, parent=self)
         self.setPage(page)
+
+        # QtWebChannel Setup
+        web_channel = QWebChannel(page)
+        page.setWebChannel(web_channel)
+        web_channel.registerObject('bridge', page)
 
     def shutdown(self):
         self.page().shutdown()
@@ -139,6 +145,10 @@ class WebEnginePage(QWebEnginePage):
         if col is None:
             col = self._theme_color
         self.setBackgroundColor(col)
+
+    @pyqtSlot(str)
+    def print(self, text):
+        print('From JS:', text)
 
     @pyqtSlot(QUrl, 'QWebEnginePage::Feature')
     def _on_feature_permission_requested(self, url, feature):

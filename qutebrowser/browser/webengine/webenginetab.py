@@ -182,7 +182,7 @@ class WebEngineCaret(browsertab.AbstractCaret):
     # Number of times to check to see if a selection has appeared.
     SELECTION_REPEAT_LIMIT = 15
     # Number of ms to wait between checks to see if a selection has appeared.
-    SELECTION_REPEAT_TIME = 1000
+    SELECTION_REPEAT_TIME = 100
 
     @pyqtSlot(usertypes.KeyMode)
     def _on_mode_entered(self, mode):

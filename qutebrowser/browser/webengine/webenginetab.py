@@ -34,6 +34,7 @@ from PyQt5.QtWebEngineWidgets import (QWebEnginePage, QWebEngineScript,
                                       QWebEngineProfile)
 # pylint: enable=no-name-in-module,import-error,useless-suppression
 from PyQt5.Qt import *
+from threading import Lock
 
 from qutebrowser.browser import browsertab, mouse, shared
 from qutebrowser.browser.webengine import (webview, webengineelem, tabhistory,
@@ -259,25 +260,15 @@ class WebEngineCaret(browsertab.AbstractCaret):
             raise browsertab.UnsupportedOperationError
         return self._widget.selectedText()
 
-    def _follow_selected_cb(self, js_elem, tab=False, repeat_limit=0):
+    def _follow_selected_cb(self, js_elem, tab=False):
         """Callback for javascript which clicks the selected element.
 
         Args:
             js_elems: The elements serialized from javascript.
             tab: Open in a new tab or not.
-            repeat_limit: The number of times we have to retry this function
         """
+        print(js_elem)
         if js_elem is None:
-            # Try to repeat this request
-            # TODO when on Qt5.9, don't repeat at all, and use selectionChanged
-            # https://bugreports.qt.io/browse/QTBUG-53134
-            if repeat_limit:
-                log.webview.debug(
-                    "Failed finding selection, remaining number:" +
-                    str(repeat_limit))
-                QTimer.singleShot(
-                    WebEngineCaret.SELECTION_REPEAT_TIME,
-                    lambda: self._run_find_selected(tab, repeat_limit - 1))
             return
         assert isinstance(js_elem, dict), js_elem
         elem = webengineelem.WebEngineElement(js_elem, tab=self._tab)
@@ -292,23 +283,21 @@ class WebEngineCaret(browsertab.AbstractCaret):
                               "Link: " + str(elem))
             elem.click(click_type)
 
-    def _run_find_selected(self, tab, repeat_limit):
+    def _run_find_selected(self, tab=False):
         """Run JS code to find the currently selected link."""
         js_code = javascript.assemble('webelem', 'find_selected_link')
         self._tab.run_js_async(js_code, lambda jsret:
-                               self._follow_selected_cb(jsret, tab,
-                                                        repeat_limit))
+                               self._follow_selected_cb(jsret, tab))
 
     def follow_selected(self, *, tab=False):
         # Clear search, which selects the found element as a side effect
         if self._tab.search.searching():
+            self._tab.webchannel_handlers.register_selection_cb(lambda jsret: self._run_find_selected(tab))
             log.webview.debug("Clearing search to select text")
             self._tab.search.clear()
-            repeat_limit = WebEngineCaret.SELECTION_REPEAT_LIMIT
         else:
             log.webview.debug("Attempting to click existing selection")
-            repeat_limit = 0
-        self._run_find_selected(tab, repeat_limit)
+            self._run_find_selected(tab)
 
 
 class WebEngineScroller(browsertab.AbstractScroller):
@@ -543,13 +532,25 @@ class WebEngineElements(browsertab.AbstractElements):
         self._tab.run_js_async(js_code, js_cb)
 
 
-class myHandler(QObject):
+class WebChannelHandlers(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._selection_lock = Lock()
+        self._selection_cb = None
 
-    @pyqtSlot(str)
-    def print(self, text):
-        print('From JS:', text)
+    # Registers a callback to get a selection_changed event ONCE.
+    def register_selection_cb(self, callback):
+        with self._selection_lock:
+            self._selection_cb = callback
+
+    # TODO when on Qt5.9, don't use this at all, and use selectionChanged
+    # https://bugreports.qt.io/browse/QTBUG-53134
+    @pyqtSlot(QVariant)
+    def selection_changed(self, ret):
+        with self._selection_lock:
+            if self._selection_cb:
+                self._selection_cb(ret)
+                self._selection_cb = None
 
 
 class WebEngineTab(browsertab.AbstractTab):
@@ -572,6 +573,7 @@ class WebEngineTab(browsertab.AbstractTab):
         self._set_widget(widget)
         self._connect_signals()
         self.backend = usertypes.Backend.QtWebEngine
+        self.webchannel_handlers = WebChannelHandlers(self)
         self._init_js()
         self._child_event_filter = None
         self._saved_zoom = None
@@ -586,32 +588,29 @@ class WebEngineTab(browsertab.AbstractTab):
                 qwebchannel_js.errorString())
         qwebchannel_js = bytes(qwebchannel_js.readAll()).decode('utf-8')
 
+        # QT Web Channel Setup
+        js_code = '\n'.join([
+            '"use strict";',
+            'window._qutebrowser = {};',
+            qwebchannel_js,
+            utils.read_file('javascript/webchannel.js'),
+        ])
         script = QWebEngineScript()
-        script.setSourceCode(qwebchannel_js + '''
-            new QWebChannel(qt.webChannelTransport, function(channel) {
-document.addEventListener("selectionchange", function() {
-        channel.objects.bridge.print('Hello world!');
-});
-            });
-        ''')
+        script.setSourceCode(js_code)
         script.setWorldId(QWebEngineScript.MainWorld)
-        page.profile().scripts().insert(script)
+        page.scripts().insert(script)
 
-        # QtWebChannel Setup
+        # QtWebChannel Initialization
         web_channel = QWebChannel(page)
         page.setWebChannel(web_channel)
-        a = myHandler(self)
-        web_channel.registerObject('bridge', a)
+        web_channel.registerObject('bridge', self.webchannel_handlers)
 
+        # Normal Javascript Initialization
         js_code = '\n'.join([
             '"use strict";',
             'window._qutebrowser = {};',
             utils.read_file('javascript/scroll.js'),
-            utils.read_file('javascript/webelem.js'),
-            # ''' new QWebChannel(qt.webChannelTransport, function(channel) {
-            # channel.objects.bridge.print('Hello world!');
-            # });
-            # '''
+            utils.read_file('javascript/webelem.js')
         ])
         script = QWebEngineScript()
         script.setInjectionPoint(QWebEngineScript.DocumentCreation)
@@ -624,7 +623,7 @@ document.addEventListener("selectionchange", function() {
         script.setRunsOnSubFrames(True)
 
         # FIXME:qtwebengine  what about runsOnSubFrames?
-        page.profile().scripts().insert(script)
+        page.scripts().insert(script)
 
     def _install_event_filter(self):
         self._widget.focusProxy().installEventFilter(self._mouse_event_filter)
@@ -632,7 +631,6 @@ document.addEventListener("selectionchange", function() {
             eventfilter=self._mouse_event_filter, widget=self._widget,
             parent=self)
         self._widget.installEventFilter(self._child_event_filter)
-
 
     @pyqtSlot()
     def _restore_zoom(self):

@@ -141,10 +141,6 @@ class WebEnginePage(QWebEnginePage):
             col = self._theme_color
         self.setBackgroundColor(col)
 
-    @pyqtSlot(str)
-    def print(self, text):
-        print('From JS:', text)
-
     @pyqtSlot(QUrl, 'QWebEnginePage::Feature')
     def _on_feature_permission_requested(self, url, feature):
         """Ask the user for approval for geolocation/media/etc.."""

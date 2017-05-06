@@ -203,7 +203,7 @@ window._qutebrowser.webelem = (function() {
     };
 
     funcs.click = function(id) {
-        var elem = elements[id];
+        var elem = elements[0];
         elem.click();
     };
 

@@ -543,6 +543,15 @@ class WebEngineElements(browsertab.AbstractElements):
         self._tab.run_js_async(js_code, js_cb)
 
 
+class myHandler(QObject):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    @pyqtSlot(str)
+    def print(self, text):
+        print('From JS:', text)
+
+
 class WebEngineTab(browsertab.AbstractTab):
 
     """A QtWebEngine tab in the browser."""
@@ -583,14 +592,16 @@ class WebEngineTab(browsertab.AbstractTab):
 document.addEventListener("selectionchange", function() {
         channel.objects.bridge.print('Hello world!');
 });
-
             });
         ''')
-        # script.setName('xxx')
         script.setWorldId(QWebEngineScript.MainWorld)
-        script.setInjectionPoint(QWebEngineScript.DocumentReady)
-        script.setRunsOnSubFrames(True)
         page.profile().scripts().insert(script)
+
+        # QtWebChannel Setup
+        web_channel = QWebChannel(page)
+        page.setWebChannel(web_channel)
+        a = myHandler(self)
+        web_channel.registerObject('bridge', a)
 
         js_code = '\n'.join([
             '"use strict";',
@@ -603,7 +614,7 @@ document.addEventListener("selectionchange", function() {
             # '''
         ])
         script = QWebEngineScript()
-        script.setInjectionPoint(QWebEngineScript.DocumentReady)
+        script.setInjectionPoint(QWebEngineScript.DocumentCreation)
         script.setSourceCode(js_code)
 
         script.setWorldId(QWebEngineScript.ApplicationWorld)
@@ -621,6 +632,7 @@ document.addEventListener("selectionchange", function() {
             eventfilter=self._mouse_event_filter, widget=self._widget,
             parent=self)
         self._widget.installEventFilter(self._child_event_filter)
+
 
     @pyqtSlot()
     def _restore_zoom(self):

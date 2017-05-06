@@ -48,11 +48,6 @@ class WebEngineView(QWebEngineView):
         page = WebEnginePage(theme_color=theme_color, parent=self)
         self.setPage(page)
 
-        # QtWebChannel Setup
-        web_channel = QWebChannel(page)
-        page.setWebChannel(web_channel)
-        web_channel.registerObject('bridge', page)
-
     def shutdown(self):
         self.page().shutdown()
 

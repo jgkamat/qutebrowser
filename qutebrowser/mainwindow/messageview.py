@@ -31,9 +31,8 @@ class Message(QLabel):
 
     """A single error/warning/info message."""
 
-    def __init__(self, level, text, replace, parent=None):
+    def __init__(self, level, text, parent=None):
         super().__init__(text, parent)
-        self.replace = replace
         self.setAttribute(Qt.WA_StyledBackground, True)
         stylesheet = """
             padding-top: 2px;
@@ -102,13 +101,17 @@ class MessageView(QWidget):
         if interval != 0:
             self._clear_timer.setInterval(interval)
 
+    def _remove_message(self, message):
+        """Helper function to delete a single message."""
+        self._vbox.removeWidget(message)
+        message.hide()
+        message.deleteLater()
+
     @pyqtSlot()
     def clear_messages(self):
         """Hide and delete all messages."""
         for widget in self._messages:
-            self._vbox.removeWidget(widget)
-            widget.hide()
-            widget.deleteLater()
+            self._remove_message(widget)
         self._messages = []
         self._last_text = None
         self.hide()
@@ -120,11 +123,11 @@ class MessageView(QWidget):
         if text == self._last_text:
             return
 
-        if replace and self._messages and self._messages[-1].replace:
-            old = self._messages.pop()
-            old.hide()
+        if replace and self._messages:
+            old = self._messages.pop(0)
+            self._remove_message(old)
 
-        widget = Message(level, text, replace=replace, parent=self)
+        widget = Message(level, text, parent=self)
         self._vbox.addWidget(widget)
         widget.show()
         if config.get('ui', 'message-timeout') != 0:

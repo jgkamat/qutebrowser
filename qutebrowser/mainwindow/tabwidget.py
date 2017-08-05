@@ -107,14 +107,6 @@ class TabWidget(QTabWidget):
         bar = self.tabBar()
         idx = self.indexOf(tab)
 
-        # Only modify pinned_count if we had a change
-        # always modify pinned_count if we are loading
-        if tab.data.pinned != pinned or loading:
-            if pinned:
-                bar.pinned_count += 1
-            elif not pinned:
-                bar.pinned_count -= 1
-
         bar.set_tab_data(idx, 'pinned', pinned)
         tab.data.pinned = pinned
         self.update_tab_title(idx)
@@ -318,7 +310,6 @@ class TabBar(QTabBar):
         self._auto_hide_timer.timeout.connect(self.maybe_hide)
         self.setAutoFillBackground(True)
         self.set_colors()
-        self.pinned_count = 0
         config_obj.changed.connect(self.set_colors)
         QTimer.singleShot(0, self.maybe_hide)
         config_obj.changed.connect(self.on_tab_colors_changed)
@@ -489,7 +480,11 @@ class TabBar(QTabBar):
                     # Get only pinned tabs (from indexes)
                     filter(self._tabPinned, range(self.count())))))
 
-    def _tabPinned(self, index: int):
+    def _pinnedCount(self) -> int:
+        """Get the number of pinned tabs."""
+        return len(list(filter(self._tabPinned, range(self.count()))))
+
+    def _tabPinned(self, index: int) -> bool:
         """Return True if tab is pinned."""
         try:
             return self.tab_data(index, 'pinned')
@@ -526,7 +521,7 @@ class TabBar(QTabBar):
             return QSize()
         else:
             pinned = self._tabPinned(index)
-            no_pinned_count = self.count() - self.pinned_count
+            no_pinned_count = self.count() - self._pinnedCount()
             pinned_width = self._tabTotalWidthPinned()
             no_pinned_width = self.width() - pinned_width
 
@@ -535,18 +530,7 @@ class TabBar(QTabBar):
                 # titles, let QT handle scaling it down if we get too small.
                 width = self.minimumTabSizeHint(index, elipsis=False).width()
             else:
-
-                # Tabs should attempt to occupy the whole window width. If
-                # there are pinned tabs their size will be subtracted from the
-                # total window width.  During shutdown the self.count goes
-                # down, but the self.pinned_count not - this generates some odd
-                # behavior. To avoid this we compare self.count against
-                # self.pinned_count. If we end up having too little space, we
-                # set the minimum size below.
-                if self.pinned_count > 0 and no_pinned_count > 0:
-                    width = no_pinned_width / no_pinned_count
-                else:
-                    width = self.width() / self.count()
+                width = no_pinned_width / no_pinned_count
 
             # If no_pinned_width is not divisible by no_pinned_count, add a
             # pixel to some tabs so that there is no ugly leftover space.

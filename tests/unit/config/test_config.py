@@ -409,10 +409,13 @@ class TestConfig:
                 new = {}
                 assert obj == old
                 if mutated:
-                    obj['X-Answer'] = '42'
                     if mutable:
+                        obj['X-Answer'] = '42'
                         new = {'X-Answer': '42'}
                         assert obj == new
+                    else:
+                        with pytest.raises(TypeError):
+                            obj['X-Answer'] = '42'
             elif option == 'keyhint.blacklist':
                 old = []
                 new = []
@@ -429,11 +432,14 @@ class TestConfig:
                 new = {}
                 assert obj == old
                 if mutated:
-                    obj['prompt'] = {}
-                    obj['prompt']['foobar'] = 'nop'
                     if mutable:
+                        obj['prompt'] = {}
+                        obj['prompt']['foobar'] = 'nop'
                         new = {'prompt': {'foobar': 'nop'}}
                         assert obj == new
+                    else:
+                        with pytest.raises(TypeError):
+                            obj['prompt'] = {}
 
         if mutable:
             assert conf._mutables[option] == (old, new)

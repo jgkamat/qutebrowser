@@ -22,6 +22,8 @@
 import copy
 import contextlib
 import functools
+import types
+import collections
 
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject
 
@@ -298,15 +300,24 @@ class Config(QObject):
             _copy, obj = self._mutables[name]
         # Otherwise, we return a copy of the value stored internally, so the
         # internal value can never be changed by mutating the object returned.
-        else:
+        elif mutable:
             obj = copy.deepcopy(self._values.get(name, opt.default))
             # Then we watch the returned object for changes.
             if isinstance(obj, (dict, list)):
-                if mutable:
-                    self._mutables[name] = (copy.deepcopy(obj), obj)
+                self._mutables[name] = (copy.deepcopy(obj), obj)
             else:
                 # Shouldn't be mutable (and thus hashable)
                 assert obj.__hash__ is not None, obj
+        else:
+            obj_mut = self._values.get(name, opt.default)
+            if isinstance(obj_mut, collections.Mapping):
+                obj = types.MappingProxyType(obj_mut)
+            elif isinstance(obj_mut, list):
+                obj = copy.deepcopy(obj_mut)
+            else:
+                # Shouldn't be mutable (and thus hashable)
+                assert obj_mut.__hash__ is not None, obj_mut
+                obj = obj_mut
         return obj
 
     def get_str(self, name):

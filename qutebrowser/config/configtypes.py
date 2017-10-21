@@ -52,6 +52,7 @@ import datetime
 import functools
 import operator
 import json
+import types
 
 import attr
 import yaml
@@ -155,8 +156,13 @@ class BaseType:
             else:
                 return
 
-        if (not isinstance(value, pytype) or
-                pytype is int and isinstance(value, bool)):
+        valid_mappingproxy = pytype is dict \
+            and isinstance(value, types.MappingProxyType)
+
+        if (not valid_mappingproxy and
+                (not isinstance(value, pytype) or
+                pytype is int and isinstance(value, bool))):
+
             if isinstance(pytype, tuple):
                 expected = ' or '.join(typ.__name__ for typ in pytype)
             else:

@@ -486,12 +486,15 @@ class TabBar(QTabBar):
         else:
             icon_width = min(icon.actualSize(self.iconSize()).width(),
                              self.iconSize().width()) + icon_padding
-        return self._minimum_tab_size_hint_helper(self.tabText(index),
+        self._minimum_tab_size_hint_helper.cache_clear()
+        a =  self._minimum_tab_size_hint_helper(index, self.tabText(index),
                                                   icon_width,
                                                   ellipsis)
+        log.misc.warning("minTabSize: {}: index, {}: size".format(index, a.width()))
+        return a
 
     @functools.lru_cache(maxsize=2**9)
-    def _minimum_tab_size_hint_helper(self, tab_text: str,
+    def _minimum_tab_size_hint_helper(self, index, tab_text: str,
                                       icon_width: int,
                                       ellipsis: bool) -> QSize:
         """Helper function to cache tab results.
@@ -512,6 +515,7 @@ class TabBar(QTabBar):
             padding_h += indicator_padding.left + indicator_padding.right
         padding_v = padding.top + padding.bottom
         height = self.fontMetrics().height() + padding_v
+        log.misc.warning("minTabSizeHintInternal: idx: {}, text_width: {}, icon_width: {}, padding_h: {}, indicator_width: {}".format(index, text_width, icon_width, padding_h, indicator_width))
         width = (text_width + icon_width +
                  padding_h + indicator_width)
         return QSize(width, height)
@@ -585,6 +589,7 @@ class TabBar(QTabBar):
 
             size = QSize(width, height)
         qtutils.ensure_valid(size)
+        log.misc.warning("tabSizeHint: {}: index, {}: size".format(index, size.width()))
         return size
 
     def paintEvent(self, _e):

@@ -506,6 +506,10 @@ class TabBar(QTabBar):
         # Don't ever shorten if text is shorter than the ellipsis
         text_width = min(self.fontMetrics().width(text),
                          self.fontMetrics().width(tab_text))
+        log.misc.warning("minTabSizeHintInternal(1): idx: {}, \"{}\"_text_width: {}, \"{}\"_text_width: {}, hcode: {}".format(index, text,
+                                                                                                                              self.fontMetrics().width(text), tab_text,
+                                                                                                                              self.fontMetrics().width(tab_text),
+                                                                                                                              self.fontMetrics().width("1")))
         padding = config.val.tabs.padding
         indicator_width = config.val.tabs.width.indicator
         indicator_padding = config.val.tabs.indicator_padding
@@ -515,7 +519,7 @@ class TabBar(QTabBar):
             padding_h += indicator_padding.left + indicator_padding.right
         padding_v = padding.top + padding.bottom
         height = self.fontMetrics().height() + padding_v
-        log.misc.warning("minTabSizeHintInternal: idx: {}, text_width: {}, icon_width: {}, padding_h: {}, indicator_width: {}".format(index, text_width, icon_width, padding_h, indicator_width))
+        log.misc.warning("minTabSizeHintInternal(2): idx: {}, text_width: {}, elipsis: {}, text: {}, tab_text: {}".format(index, text_width, ellipsis, text, tab_text))
         width = (text_width + icon_width +
                  padding_h + indicator_width)
         return QSize(width, height)

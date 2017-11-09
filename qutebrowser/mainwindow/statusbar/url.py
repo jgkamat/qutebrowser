@@ -111,6 +111,7 @@ class UrlText(textbase.TextBase):
         else:
             self.setText('')
             self._urltype = UrlType.normal
+        print("making stylesheet")
         config.set_register_stylesheet(self, update=False)
 
     @pyqtSlot(str)

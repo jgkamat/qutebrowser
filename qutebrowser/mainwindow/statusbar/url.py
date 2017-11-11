@@ -88,6 +88,20 @@ class UrlText(textbase.TextBase):
         self._normal_url = None
         self._normal_url_type = UrlType.normal
 
+        # profiling stuff
+
+        from pympler import classtracker
+        import gc
+        tr = classtracker.ClassTracker()
+        tr.track_class(config.StyleSheetObserver)
+        tr.create_snapshot()
+        # ~6 per page visit, 10000 per qb instance
+        for i in range(10000 * 6):
+            config.set_register_stylesheet(self, update=False)
+        tr.create_snapshot()
+        tr.stats.print_summary()
+        gc.collect
+
     @pyqtProperty(str)
     def urltype(self):
         """Getter for self.urltype, so it can be used as Qt property.

@@ -750,7 +750,7 @@ class TabBarStyle(QCommonStyle):
             # any sophisticated drawing.
             super().drawControl(QStyle.CE_TabBarTabShape, opt, p, widget)
         elif element == QStyle.CE_TabBarTabLabel:
-            if not opt.icon.isNull() and layouts.icon.isValid():
+            if layouts.icon is not None and not opt.icon.isNull() and layouts.icon.isValid():
                 self._draw_icon(layouts, opt, p)
             alignment = (config.val.tabs.title.alignment |
                          Qt.AlignVCenter | Qt.TextHideMnemonic)
@@ -853,7 +853,7 @@ class TabBarStyle(QCommonStyle):
                              indicator_padding.right, 0, 0, 0)
 
         icon_rect = self._get_icon_rect(opt, text_rect)
-        if icon_rect.isValid():
+        if icon_rect is not None and icon_rect.isValid():
             icon_padding = self.pixelMetric(PixelMetrics.icon_padding, opt)
             text_rect.adjust(icon_rect.width() + icon_padding, 0, 0, 0)
 
@@ -891,6 +891,32 @@ class TabBarStyle(QCommonStyle):
                 min(actual_size.height(), icon_size.height()))
 
         icon_top = text_rect.center().y() + 1 - tab_icon_size.height() / 2
-        icon_rect = QRect(QPoint(text_rect.left(), icon_top), tab_icon_size)
-        icon_rect = self._style.visualRect(opt.direction, opt.rect, icon_rect)
-        return icon_rect
+        icon_rect_parent = QRect(QPoint(text_rect.left(), icon_top), tab_icon_size)
+        # Recty makes everything OK!
+        recty =  QRect(10, 10, 30, 30)
+        # global run_once
+        # if str(opt.rect) not in run_once:
+        #     run_once[str(opt.rect)] = 1
+        # else:
+        #     run_once[str(opt.rect)] = run_once[str(opt.rect)] + 1
+
+        # print(run_once)
+        # opt.rect is naughty!
+        # print(opt.rect)
+        # recty2 = QRect(0, 0, 125, 14)
+        recty2 = QRect(460, 0, 460, 14)
+        recty3 = QRect(0, 0, 460, 14)
+        recty4 = QRect(0, 0, 920, 14)
+        recty5 = QRect(opt.rect.x(), opt.rect.y(), opt.rect.width(), opt.rect.height())
+        # print(recty5 == opt.rect)
+        # print(icon_rect_parent)
+        icon_rect = self._style.visualRect(opt.direction, recty5, recty)
+        # TODO even ret None causes the leak?
+        for i in range(100000):
+            opt.rect
+
+        return None
+run_once = {}
+# import tracemalloc;tracemalloc.start();snapshot1 = tracemalloc.take_snapshot()
+# snapshot2 = tracemalloc.take_snapshot();top_stats = snapshot2.compare_to(snapshot1, 'lineno')
+# for stat in top_stats[:20]:  print(stat)

@@ -293,6 +293,18 @@ class TabWidget(QTabWidget):
         qtutils.ensure_valid(url)
         return url
 
+    def tab_selection(self, idx):
+        """Get selected text from the tab at the given index.
+
+        Return:
+            Text selected in the tab at idx.
+        """
+        tab = self.widget(idx)
+        if tab is None:
+            return None
+        else:
+            return tab.caret.selection()
+
 
 class TabBar(QTabBar):
 

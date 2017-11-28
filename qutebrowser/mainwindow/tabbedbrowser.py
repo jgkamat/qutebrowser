@@ -250,6 +250,17 @@ class TabbedBrowser(tabwidget.TabWidget):
         idx = self.currentIndex()
         return super().tab_url(idx)
 
+    def current_selection(self):
+        """Get the selected text of the current tab.
+
+        Intended to be used from command handlers.
+
+        Return:
+            The selected text as a string.
+        """
+        idx = self.currentIndex()
+        return super().tab_selection(idx)
+
     def shutdown(self):
         """Try to shut down all tabs cleanly."""
         self.shutting_down = True

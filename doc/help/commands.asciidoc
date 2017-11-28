@@ -15,6 +15,8 @@ For command arguments, there are also some variables you can use:
 - `{url:pretty}` expands to the URL in decoded format
 - `{clipboard}` expands to the clipboard contents
 - `{primary}` expands to the primary selection contents
+- `{selection}` expands to the currently selected text. See
+   https://bugreports.qt.io/browse/QTBUG-53134 for limitations on webengine.
 
 It is possible to run or bind multiple commands by separating them with `;;`.
 

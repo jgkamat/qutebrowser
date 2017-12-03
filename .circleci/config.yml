@@ -1,10 +1,16 @@
-defaults: &defaults
+defaults: &dir
   working_directory: ~/qutebrowser-ci
+
+defaults: &run-testenv
+  steps:
+    - checkout
+    - run: pip install --user tox
+    - run: ~/.local/bin/tox -e $TESTENV
 
 version: 2
 jobs:
   arch:
-    <<: *defaults
+    <<: *dir
     docker:
       - image: qutebrowser/travis:archlinux
     environment:
@@ -13,8 +19,47 @@ jobs:
       - checkout
       - run: tox -e py36
 
+  arch-webengine:
+    <<: *dir
+    docker:
+      - image: qutebrowser/travis:archlinux-webengine
+    environment:
+      - DOCKER: "archlinux-webengine"
+      - QUTE_BDD_WEBENGINE: "true"
+    steps:
+      - checkout
+      - run: tox -e py36
+
+  py36-pqyt571:
+    <<: *dir
+    docker:
+      - image: circleci/python:3.6-stretch-browsers
+    environment:
+      - TESTENV: "py36-pyqt571"
+    <<: *run-testenv
+
+  py36-pqyt58:
+    <<: *dir
+    docker:
+      - image: circleci/python:3.6-stretch-browsers
+    environment:
+      - TESTENV: "py36-pyqt58"
+    <<: *run-testenv
+
+  py35-pqyt59:
+    <<: *dir
+    docker:
+      - image: circleci/python:3.5-browsers
+    environment:
+      - TESTENV: "py35-pyqt59"
+    <<: *run-testenv
+
 workflows:
   version: 2
   build_and_test:
     jobs:
       - arch
+      - arch-webengine
+      - py36-pqyt571
+      - py36-pqyt58
+      - py35-pqyt59

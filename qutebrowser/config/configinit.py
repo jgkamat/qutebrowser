@@ -42,6 +42,7 @@ def early_init(args):
 
     config.instance = config.Config(yaml_config=yaml_config)
     config.val = config.ConfigContainer(config.instance)
+    config.cached_val = config.ConfigContainer(config.instance, cached=True)
     config.key_instance = config.KeyConfig(config.instance)
     yaml_config.setParent(config.instance)
 

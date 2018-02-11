@@ -31,6 +31,7 @@ from qutebrowser.misc import objects
 
 # An easy way to access the config from other code via config.val.foo
 val = None
+cached_val = None
 instance = None
 key_instance = None
 
@@ -269,6 +270,10 @@ class Config(QObject):
         opt.typ.to_py(value)  # for validation
         self._values[opt.name] = opt.typ.from_obj(value)
 
+        # Clear config cache. Clearing the top level cache will
+        # cause everything to be re-generated.
+        cached_val.cache_clear()
+
         self.changed.emit(opt.name)
         log.config.debug("Config option changed: {} = {}".format(
             opt.name, value))
@@ -333,6 +338,7 @@ class Config(QObject):
         If save_yaml=True is given, store the new value to YAML.
         """
         self._set_value(self.get_opt(name), value)
+
         if save_yaml:
             self._yaml[name] = value
 
@@ -417,10 +423,11 @@ class ConfigContainer:
                     add errors to the given ConfigAPI object.
     """
 
-    def __init__(self, config, configapi=None, prefix=''):
+    def __init__(self, config, configapi=None, prefix='', cached=False):
         self._config = config
         self._prefix = prefix
         self._configapi = configapi
+        self._cached = cached
 
     def __repr__(self):
         return utils.get_repr(self, constructor=True, config=self._config,
@@ -445,6 +452,20 @@ class ConfigContainer:
         Those two never overlap as configdata.py ensures there are no shadowing
         options.
         """
+        if self._cached:
+            return self._get_internal_cached(attr)
+        else:
+            return self._get_internal(attr)
+
+    @functools.lru_cache(maxsize=2**4)
+    def _get_internal_cached(self, attr):
+        return self._get_internal(attr)
+
+    # Clears cache. Should be used on root ConfigContainer object.
+    def cache_clear(self):
+        self._get_internal_cached.cache_clear()
+
+    def _get_internal(self, attr):
         if attr.startswith('_'):
             return self.__getattribute__(attr)
 
@@ -452,7 +473,8 @@ class ConfigContainer:
         if configdata.is_valid_prefix(name):
             return ConfigContainer(config=self._config,
                                    configapi=self._configapi,
-                                   prefix=name)
+                                   prefix=name,
+                                   cached=self._cached)
 
         with self._handle_error('getting', name):
             if self._configapi is None:

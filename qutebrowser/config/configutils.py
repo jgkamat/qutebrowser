@@ -29,6 +29,10 @@ from PyQt5.QtCore import QUrl
 from qutebrowser.utils import utils, urlmatch
 from qutebrowser.config import configexc
 
+import functools
+import copy
+import regex
+
 MYPY = False
 if MYPY:
     # pylint: disable=unused-import,useless-suppression
@@ -128,7 +132,8 @@ class Values:
             pattern: urlmatch.UrlPattern = None) -> None:
         """Add a value with the given pattern to the list of values."""
         self._check_pattern_support(pattern)
-        self.remove(pattern)
+        # this spends a crazy amount of cycles (and should be fixed) but is irrelevant to the main matching case
+        # self.remove(pattern)
         scoped = ScopedValue(value, pattern)
         self._values.append(scoped)
 
@@ -158,8 +163,31 @@ class Values:
         else:
             return UNSET
 
+    # this will only run once, which is obviously broken
+    @functools.lru_cache(maxsize=None)
+    def values_to_re(self):
+        t_values = copy.deepcopy(self._values)
+        def _m(v):
+            if v.pattern is None:
+                # The global match shouldn't be handled in here, but handled if/not there was a match
+                return None
+                # name = "global"
+            else:
+                val = regex.escape(v.pattern._pattern)
+                # name = val
+                # We have to 'unescape *' since we escaped it above
+                val = val.replace("\*", ".*?")
+            val = "(" + val + ")"
+            return val
+        # reverse this list to be "fair"
+        reg = "|".join(filter(None, map(_m, reversed(t_values))))
+        reg = "^" + reg + "$"
+        print(reg)
+        return regex.compile(reg)
+
+
     def get_for_url(self, url: QUrl = None, *,
-                    fallback: bool = True) -> typing.Any:
+                    fallback: bool = True, use_re: bool = False) -> typing.Any:
         """Get a config value, falling back when needed.
 
         This first tries to find a value matching the URL (if given).
@@ -169,9 +197,15 @@ class Values:
         """
         self._check_pattern_support(url)
         if url is not None:
-            for scoped in reversed(self._values):
-                if scoped.pattern is not None and scoped.pattern.matches(url):
-                    return scoped.value
+            if use_re:
+                r = self.values_to_re()
+                match = regex.match(r, url.toString())
+                if match is not None and match.lastindex is not None:
+                    return self._values[-match.lastindex].value
+            else:
+                for scoped in reversed(self._values):
+                    if scoped.pattern is not None and scoped.pattern.matches(url):
+                        return scoped.value
 
             if not fallback:
                 return UNSET

@@ -749,6 +749,12 @@ class TabBarStyle(QCommonStyle):
     https://code.google.com/p/makehuman/source/browse/trunk/makehuman/lib/qtgui.py
     """
 
+    NOSHIFT_METRICS = {QStyle.PM_TabBarTabShiftHorizontal,
+                       QStyle.PM_TabBarTabShiftVertical,
+                       QStyle.PM_TabBarTabHSpace,
+                       QStyle.PM_TabBarTabVSpace,
+                       QStyle.PM_TabBarScrollButtonWidth}
+
     def __init__(self):
         """Initialize all functions we're not overriding.
 
@@ -848,16 +854,11 @@ class TabBarStyle(QCommonStyle):
         Return:
             An int.
         """
-        if metric in [QStyle.PM_TabBarTabShiftHorizontal,
-                      QStyle.PM_TabBarTabShiftVertical,
-                      QStyle.PM_TabBarTabHSpace,
-                      QStyle.PM_TabBarTabVSpace,
-                      QStyle.PM_TabBarScrollButtonWidth]:
+        if metric in TabBarStyle.NOSHIFT_METRICS:
             return 0
         elif metric == PixelMetrics.icon_padding:
             return 4
-        else:
-            return self._style.pixelMetric(metric, option, widget)
+        return self._style.pixelMetric(metric, option, widget)
 
     def subElementRect(self, sr, opt, widget=None):
         """Override subElementRect to use our own _tab_layout implementation.

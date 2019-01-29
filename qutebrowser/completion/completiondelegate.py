@@ -215,12 +215,12 @@ class CompletionItemDelegate(QStyledItemDelegate):
             if index.column() in columns_to_filter and pattern:
                 pat = re.escape(pattern).replace(r'\ ', r'|')
                 _Highlighter(self._doc, pat,
-                             config.val.colors.completion.match.fg)
+                             config.cache['colors.completion.match.fg'])
             self._doc.setPlainText(self._opt.text)
         else:
             self._doc.setHtml(
                 '<span style="font: {};">{}</span>'.format(
-                    html.escape(config.val.fonts.completion.category),
+                    html.escape(config.cache['fonts.completion.category']),
                     html.escape(self._opt.text)))
 
     def _draw_focus_rect(self):

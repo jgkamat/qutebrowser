@@ -431,14 +431,14 @@ class TabBar(QTabBar):
     def on_current_changed(self):
         """Show tab bar when current tab got changed."""
         self.maybe_hide()  # for fullscreen tabs
-        if config.val.tabs.show == 'switching':
+        if config.cache['tabs.show'] == 'switching':
             self.show()
             self._auto_hide_timer.start()
 
     @pyqtSlot()
     def maybe_hide(self):
         """Hide the tab bar if needed."""
-        show = config.val.tabs.show
+        show = config.cache['tabs.show']
         tab = self._current_tab()
         if (show in ['never', 'switching'] or
                 (show == 'multiple' and self.count() == 1) or

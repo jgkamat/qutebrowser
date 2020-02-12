@@ -26,7 +26,7 @@ import functools
 import typing
 
 from PyQt5.QtCore import (pyqtSignal, pyqtSlot, QRect, QPoint, QTimer, Qt,
-                          QCoreApplication, QEventLoop)
+                          QCoreApplication, QEventLoop, QByteArray, QObject)
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QApplication, QSizePolicy
 
 from qutebrowser.commands import runners
@@ -44,8 +44,11 @@ from qutebrowser.misc import crashsignal, keyhintwidget, sessions
 win_id_gen = itertools.count(0)
 
 
-def get_window(via_ipc, force_window=False, force_tab=False,
-               force_target=None, no_raise=False):
+def get_window(via_ipc: bool,
+               force_window: bool = False,
+               force_tab: bool = False,
+               force_target: typing.Optional[bool] = None,
+               no_raise: bool = False):
     """Helper function for app.py to get a window id.
 
     Args:
@@ -70,9 +73,9 @@ def get_window(via_ipc, force_window=False, force_tab=False,
     # Apply any target overrides, ordered by precedence
     if force_target is not None:
         open_target = force_target
-    if force_window:
+    if force_window and open_target != 'private-window':
         open_target = 'window'
-    if force_tab and open_target == 'window':
+    if force_tab and open_target in {'window', 'private-window'}:
         # Command sent via IPC
         open_target = 'tab-silent'
 
@@ -80,13 +83,15 @@ def get_window(via_ipc, force_window=False, force_tab=False,
     should_raise = False
 
     # Try to find the existing tab target if opening in a tab
-    if open_target != 'window':
+    if open_target not in {'window', 'private-window'}:
         window = get_target_window()
-        should_raise = open_target not in ['tab-silent', 'tab-bg-silent']
+        should_raise = open_target not in {'tab-silent', 'tab-bg-silent'}
+
+    is_private = open_target == 'private-window'
 
     # Otherwise, or if no window was found, create a new one
     if window is None:
-        window = MainWindow(private=None)
+        window = MainWindow(private=is_private)
         window.show()
         should_raise = True
 
@@ -132,7 +137,6 @@ _OverlayInfoType = typing.Tuple[QWidget, pyqtSignal, bool, str]
 
 
 class MainWindow(QWidget):
-
     """The main window of qutebrowser.
 
     Adds all needed components to a vbox, initializes sub-widgets and connects
@@ -183,7 +187,10 @@ class MainWindow(QWidget):
         }
     """
 
-    def __init__(self, *, private, geometry=None, parent=None):
+    def __init__(self, *,
+                 private: bool,
+                 geometry: typing.Optional[QByteArray] = None,
+                 parent: typing.Optional[QObject] = None) -> None:
         """Create a new main window.
 
         Args:
@@ -198,6 +205,7 @@ class MainWindow(QWidget):
         from qutebrowser.mainwindow.statusbar import bar
 
         self.setAttribute(Qt.WA_DeleteOnClose)
+        self._commandrunner = None
         self._overlays = []  # type: typing.MutableSequence[_OverlayInfoType]
         self.win_id = next(win_id_gen)
         self.registry = objreg.ObjectRegistry()

@@ -3033,6 +3033,7 @@ bindings.default:
 
 bindings.commands:
   default: {}
+  supports_pattern: true
   type:
     name: Dict
     none_ok: true
